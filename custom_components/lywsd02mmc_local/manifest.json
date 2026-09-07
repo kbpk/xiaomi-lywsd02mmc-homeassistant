@@ -1,0 +1,23 @@
+{
+  "domain": "lywsd02mmc_local",
+  "name": "LYWSD02MMC Local",
+  "bluetooth": [
+    {
+      "connectable": false,
+      "service_data_uuid": "0000fe95-0000-1000-8000-00805f9b34fb"
+    },
+    {
+      "connectable": true,
+      "local_name": "LYWSD02*"
+    }
+  ],
+  "codeowners": ["@kbpk"],
+  "config_flow": true,
+  "dependencies": ["bluetooth"],
+  "documentation": "https://github.com/kbpk/xiaomi-lywsd02mmc-homeassistant",
+  "integration_type": "device",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/kbpk/xiaomi-lywsd02mmc-homeassistant/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

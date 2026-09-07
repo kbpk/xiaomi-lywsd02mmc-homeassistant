@@ -1,0 +1,49 @@
+{
+  "title": "LYWSD02MMC Local",
+  "config": {
+    "abort": {
+      "already_configured": "Ten zegar jest już skonfigurowany",
+      "no_devices_found": "Nie znaleziono zgodnego zegara z rodziny LYWSD02",
+      "not_supported": "Wykryte urządzenie nie jest obsługiwanym zegarem z rodziny LYWSD02"
+    },
+    "error": {
+      "activation_refused": "Zegar odrzucił lokalną aktywację",
+      "authentication_failed": "Wygenerowane dane nie uwierzytelniły się w zegarze",
+      "cannot_connect": "Nie można połączyć się przez Bluetooth Home Assistanta",
+      "device_not_found": "Zegar zniknął albo brak trasy Bluetooth obsługującej połączenia",
+      "disconnected": "Zegar rozłączył się przed zakończeniem aktywacji lub uwierzytelniania",
+      "invalid_bindkey": "Bindkey musi mieć 32 znaki szesnastkowe i uwierzytelniać bieżącą reklamę",
+      "invalid_token": "Opcjonalny token Mi musi mieć 24 znaki szesnastkowe",
+      "malformed_response": "Zegar zwrócił niepoprawną lub nieoczekiwaną odpowiedź MiBLE",
+      "not_supported": "Firmware nie udostępnia oczekiwanych usług GATT FE95 i LYWSD02",
+      "timeout": "Zegar nie odpowiedział przed upływem limitu czasu etapu aktywacji",
+      "unknown": "Nieoczekiwany błąd komunikacji z zegarem"
+    },
+    "progress": {"provisioning": "Generowanie klucza tymczasowego, aktywowanie zegara i weryfikowanie logowania"},
+    "step": {
+      "activation_failed": {"description": "Aktywacja nie została zapisana. Umieść zegar w zasięgu i zatwierdź, aby spróbować ponownie.", "title": "Lokalna aktywacja nie powiodła się"},
+      "bluetooth_confirm": {"description": "Znaleziono {name}: {address}, sygnał {rssi} dBm, rozpoznano jako {product}.", "title": "Potwierdź LYWSD02MMC"},
+      "manual_bindkey": {"data": {"bindkey": "Bindkey (32 znaki hex)", "token": "Token Mi (opcjonalny, 24 znaki hex)"}, "description": "Token jest potrzebny tylko wtedy, gdy firmware wymaga logowania MiBLE do zapisu zegara lub jednostki.", "title": "Istniejące dane lokalne"},
+      "method": {"data": {"auto_sync_clock": "Zsynchronizuj zegar po aktywacji", "method": "Metoda poświadczeń"}, "description": "Zgłoszony stan aktywacji: {state}", "title": "Konfiguracja lokalna"},
+      "reactivate_warning": {"description": "Zegar zgłasza, że jest już aktywowany. Kontynuacja zastąpi dane Xiaomi i może zerwać istniejące powiązanie Mi Home. Nowe klucze będą zapisane wyłącznie we wpisie Home Assistanta.", "title": "Zastąpić istniejące powiązanie?"},
+      "user": {"data": {"address": "Zegar"}, "title": "Wybierz zegar z rodziny LYWSD02"}
+    }
+  },
+  "entity": {
+    "button": {"synchronize_clock": {"name": "Synchronizuj zegar"}},
+    "select": {"display_unit": {"name": "Jednostka temperatury wyświetlacza", "state": {"celsius": "Celsjusz", "fahrenheit": "Fahrenheit"}}},
+    "sensor": {"battery": {"name": "Bateria"}, "humidity": {"name": "Wilgotność"}, "signal_strength": {"name": "Siła sygnału"}, "temperature": {"name": "Temperatura"}}
+  },
+  "selector": {
+    "credential_method": {
+      "options": {
+        "activate_local": "Aktywuj lokalnie i wygeneruj dane",
+        "manual_bindkey": "Wprowadź istniejący bindkey"
+      }
+    }
+  },
+  "exceptions": {
+    "clock_sync_failed": {"message": "Nie udało się zsynchronizować fizycznego zegara"},
+    "unit_change_failed": {"message": "Nie udało się zmienić jednostki na fizycznym wyświetlaczu"}
+  }
+}

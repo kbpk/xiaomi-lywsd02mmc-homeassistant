@@ -1,0 +1,51 @@
+{
+  "title": "LYWSD02MMC Local",
+  "config": {
+    "abort": {
+      "already_configured": "This clock is already configured",
+      "no_devices_found": "No compatible LYWSD02 family clock was found",
+      "not_supported": "The discovered device is not a supported LYWSD02 family clock"
+    },
+    "error": {
+      "activation_refused": "The clock refused local activation",
+      "authentication_failed": "The generated credentials did not authenticate to the clock",
+      "cannot_connect": "Unable to connect through Home Assistant Bluetooth",
+      "device_not_found": "The clock disappeared or no connectable Bluetooth route is available",
+      "disconnected": "The clock disconnected before provisioning or authentication completed",
+      "invalid_bindkey": "The bindkey must be 32 hexadecimal characters and authenticate the current advertisement",
+      "invalid_token": "The optional Mi token must be 24 hexadecimal characters",
+      "malformed_response": "The clock returned a malformed or unexpected MiBLE response",
+      "not_supported": "The connected firmware does not expose the expected FE95 and LYWSD02 GATT services",
+      "timeout": "The clock did not answer before the activation stage timed out",
+      "unknown": "Unexpected error while communicating with the clock"
+    },
+    "progress": {
+      "provisioning": "Generating an ephemeral key, provisioning the clock and verifying login"
+    },
+    "step": {
+      "activation_failed": {"description": "Activation was not committed. Put the clock in connectable range and submit to try again.", "title": "Local activation failed"},
+      "bluetooth_confirm": {"description": "Found {name} at {address}, signal {rssi} dBm, detected as {product}.", "title": "Confirm LYWSD02MMC"},
+      "manual_bindkey": {"data": {"bindkey": "Bindkey (32 hex characters)", "token": "Mi token (optional, 24 hex characters)"}, "description": "The token is only needed when this firmware requires MiBLE login for clock or unit writes.", "title": "Existing local credentials"},
+      "method": {"data": {"auto_sync_clock": "Synchronize the clock after activation", "method": "Credential method"}, "description": "Reported activation state: {state}", "title": "Configure locally"},
+      "reactivate_warning": {"description": "This clock reports that it is already activated. Continuing replaces its Xiaomi credentials and can break an existing Mi Home binding. The new keys will exist only in this Home Assistant config entry.", "title": "Replace existing device binding?"},
+      "user": {"data": {"address": "Clock"}, "title": "Select an LYWSD02 family clock"}
+    }
+  },
+  "entity": {
+    "button": {"synchronize_clock": {"name": "Synchronize clock"}},
+    "select": {"display_unit": {"name": "Temperature display unit", "state": {"celsius": "Celsius", "fahrenheit": "Fahrenheit"}}},
+    "sensor": {"battery": {"name": "Battery"}, "humidity": {"name": "Humidity"}, "signal_strength": {"name": "Signal strength"}, "temperature": {"name": "Temperature"}}
+  },
+  "selector": {
+    "credential_method": {
+      "options": {
+        "activate_local": "Activate locally and generate credentials",
+        "manual_bindkey": "Enter an existing bindkey"
+      }
+    }
+  },
+  "exceptions": {
+    "clock_sync_failed": {"message": "Could not synchronize the physical clock"},
+    "unit_change_failed": {"message": "Could not change the physical display unit"}
+  }
+}
