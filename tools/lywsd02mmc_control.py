@@ -51,7 +51,6 @@ async def run(args: argparse.Namespace) -> None:
     credentials = read_credentials(args.credentials)
     address = str(credentials["address"])
     product = constants.PRODUCTS.get(credentials.get("product_id"))
-    offset_step = product.time_offset_step_minutes if product else 60
     celsius_value = product.celsius_value if product else 0x00
     trace = JsonlTrace(args.trace)
     disconnected = asyncio.Event()
@@ -72,9 +71,7 @@ async def run(args: argparse.Namespace) -> None:
 
             if args.sync_clock:
                 now = datetime.now().astimezone()
-                expected = time_protocol.build_time_payload(
-                    now, offset_step_minutes=offset_step
-                )
+                expected = time_protocol.build_time_payload(now)
                 await client.write_gatt_char(
                     constants.TIME_CHAR_UUID, expected, response=True
                 )
@@ -84,13 +81,12 @@ async def run(args: argparse.Namespace) -> None:
                 trace.write(
                     "clock_sync_confirmed",
                     epoch=epoch,
-                    offset_units=offset,
-                    offset_step_minutes=offset_step,
+                    offset_hours=offset,
                     readback_length=len(actual),
                 )
                 print(
                     "Clock synchronized and verified: "
-                    f"offset={offset}×{offset_step}min readback={len(actual)} bytes"
+                    f"offset={offset:+d}h readback={len(actual)} bytes"
                 )
 
             if args.set_unit:

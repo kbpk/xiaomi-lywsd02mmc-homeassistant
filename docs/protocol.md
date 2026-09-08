@@ -125,12 +125,14 @@ relying on a name alone.
 ## Clock and unit
 
 The common writable prefix is five bytes: little-endian unsigned Unix epoch
-followed by a one-byte UTC offset. The offset encoding differs by revision:
+followed by a signed whole-hour UTC offset byte. For zones with a 30- or
+45-minute component, known clients fold the remainder into the epoch.
 
-- original PID `0x045B` clients use a signed whole-hour value; for zones with a
-  30- or 45-minute component they fold the remainder into the epoch;
-- the physically tested PID `0x2542` uses signed 15-minute units. A Warsaw
-  summer offset of UTC+2 is therefore `08`, and Nepal UTC+5:45 is `23`.
+Physical testing corrected an initially misleading readback result on PID
+`0x2542`: the characteristic echoes arbitrary writes, but the display interprets
+the fifth byte as hours. Writing `08` in Warsaw produced UTC+8 on screen; writing
+`02` produced the correct UTC+2 local time. Echo verification alone therefore
+does not prove the semantic meaning of a setting.
 
 Firmware `2.0.1_0021` on PID `0x2542` returned seven bytes from the time
 characteristic: the five-byte prefix plus two zero bytes. Writes remain the

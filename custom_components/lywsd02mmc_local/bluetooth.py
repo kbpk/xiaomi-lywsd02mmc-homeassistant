@@ -142,8 +142,7 @@ class LYWSD02MMCConnectionManager:
         return PRODUCTS.get(self.product_id) if self.product_id is not None else None
 
     def _time_payload(self, now: datetime) -> bytes:
-        step = self._product.time_offset_step_minutes if self._product else 60
-        return build_time_payload(now, offset_step_minutes=step)
+        return build_time_payload(now)
 
     def _unit_payload(self, unit: str) -> bytes:
         celsius_value = self._product.celsius_value if self._product else 0x00

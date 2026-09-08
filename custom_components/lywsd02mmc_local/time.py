@@ -2,40 +2,31 @@
 
 from __future__ import annotations
 
-import math
 import struct
 from datetime import datetime
 
 
-def build_time_payload(
-    now: datetime, *, offset_step_minutes: int = 60
-) -> bytes:
+def build_time_payload(now: datetime) -> bytes:
     """Build Xiaomi's five-byte local-clock payload.
 
-    The first four bytes contain UTC Unix time. The signed final byte contains
-    the current UTC offset in device-specific units. Original t1 firmware uses
-    whole hours; confirmed t8 firmware uses 15-minute units. For legacy
-    whole-hour firmware only, a sub-hour remainder is folded into the epoch as
-    done by existing LYWSD02 clients.
+    The first four bytes contain UTC Unix time, adjusted only by any fractional
+    part of the timezone offset. The signed final byte contains the whole-hour
+    UTC offset. The fractional adjustment is the convention used by existing
+    LYWSD02 clients for half-hour and quarter-hour zones.
     """
 
     offset = now.utcoffset()
     if now.tzinfo is None or offset is None:
         raise ValueError("time must be timezone-aware")
-    if offset_step_minutes not in (15, 60):
-        raise ValueError("time offset step must be 15 or 60 minutes")
     offset_seconds = int(offset.total_seconds())
-    step_seconds = offset_step_minutes * 60
-    offset_units = math.trunc(offset_seconds / step_seconds)
-    if not -128 <= offset_units <= 127:
+    offset_hours = int(offset_seconds / 3600)
+    if not -128 <= offset_hours <= 127:
         raise ValueError("UTC offset does not fit the protocol byte")
-    sub_hour_seconds = offset_seconds - offset_units * step_seconds
-    if offset_step_minutes == 15 and sub_hour_seconds:
-        raise ValueError("UTC offset is not a multiple of 15 minutes")
-    epoch = int(now.timestamp()) + sub_hour_seconds
+    fractional_offset_seconds = offset_seconds - offset_hours * 3600
+    epoch = int(now.timestamp()) + fractional_offset_seconds
     if not 0 <= epoch <= 0xFFFFFFFF:
         raise ValueError("Unix timestamp does not fit uint32")
-    return struct.pack("<Ib", epoch, offset_units)
+    return struct.pack("<Ib", epoch, offset_hours)
 
 
 def parse_time_payload(payload: bytes) -> tuple[int, int]:

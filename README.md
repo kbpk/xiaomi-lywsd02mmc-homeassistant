@@ -211,9 +211,11 @@ local name `LYWSD02MMC`, firmware `2.0.1_0021`, hardware `F4_M1`, the complete
 GATT fingerprint, Celsius value `00`, seven-byte time readback, and its
 five-byte live-data payload (temperature, humidity and battery millivolts).
 Fresh activation, bound-device reactivation/DID handling, immediate and later
-fresh-connection login, authenticated encrypted advertisements, clock sync with
-Warsaw UTC+2 (`8 × 15 min`) and Celsius write/readback have all completed on
-that device. A passive battery object did not appear in the bounded capture;
+fresh-connection login, authenticated encrypted advertisements and Celsius
+write/readback have all completed on that device. Clock testing established
+that firmware `2.0.1_0021` interprets the timezone byte as signed whole hours;
+Warsaw UTC+2 is encoded as `02`. A passive battery object did not appear in the
+bounded capture;
 the authenticated parser path is covered by tests and updates the entity when
 the device broadcasts one.
 

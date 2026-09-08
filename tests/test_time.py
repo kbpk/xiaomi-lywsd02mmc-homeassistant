@@ -48,26 +48,26 @@ def test_ha_configured_timezone_and_dst_transition() -> None:
     assert parse_time_payload(build_time_payload(after))[1] == 2
 
 
-def test_t8_quarter_hour_timezone_encoding() -> None:
+def test_t8_uses_whole_hour_timezone_encoding() -> None:
     warsaw = ZoneInfo("Europe/Warsaw")
     summer = datetime(2026, 9, 8, 1, 30, tzinfo=warsaw)
-    epoch, offset_units = parse_time_payload(
-        build_time_payload(summer, offset_step_minutes=15)
-    )
+    epoch, offset_hours = parse_time_payload(build_time_payload(summer))
     assert epoch == int(summer.timestamp())
-    assert offset_units == 8
+    assert offset_hours == 2
 
     nepal = datetime(2026, 1, 2, tzinfo=timezone(timedelta(hours=5, minutes=45)))
-    assert parse_time_payload(
-        build_time_payload(nepal, offset_step_minutes=15)
-    )[1] == 23
+    nepal_epoch, nepal_hours = parse_time_payload(build_time_payload(nepal))
+    assert nepal_epoch == int(nepal.timestamp()) + 45 * 60
+    assert nepal_hours == 5
 
     newfoundland = datetime(
         2026, 1, 2, tzinfo=timezone(-timedelta(hours=3, minutes=30))
     )
-    assert parse_time_payload(
-        build_time_payload(newfoundland, offset_step_minutes=15)
-    )[1] == -14
+    newfoundland_epoch, newfoundland_hours = parse_time_payload(
+        build_time_payload(newfoundland)
+    )
+    assert newfoundland_epoch == int(newfoundland.timestamp()) - 30 * 60
+    assert newfoundland_hours == -3
 
 
 def test_direct_notification_and_units() -> None:
