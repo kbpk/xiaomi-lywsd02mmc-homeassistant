@@ -27,6 +27,7 @@ from custom_components.lywsd02mmc_local.provision import (
 def _feed_device_public_key(
     machine: MiBLEStateMachine, device_private: ec.EllipticCurvePrivateKey
 ) -> None:
+    assert machine.feed(MIBLE_CHAR_19, bytes.fromhex("00000100")) == []
     public = p256_public_key_bytes(device_private)[1:]
     for index, start in enumerate(range(0, 64, 18), 1):
         writes = machine.feed(
@@ -75,10 +76,14 @@ def _complete_login(machine: MiBLEStateMachine, token: bytes) -> None:
     ]
     random_write = machine.feed(MIBLE_CHAR_19, bytes.fromhex("00000101"))
     assert random_write[0].data == b"\x01\x00" + machine.client_random
+    assert machine.feed(MIBLE_CHAR_19, bytes.fromhex("00000100")) == []
     machine.feed(MIBLE_CHAR_19, bytes.fromhex("0000000d0100"))
+    assert machine.feed(MIBLE_CHAR_19, bytes.fromhex("00000100")) == []
     device_random = bytes(range(16, 32))
     machine.feed(MIBLE_CHAR_19, b"\x01\x00" + device_random)
+    assert machine.feed(MIBLE_CHAR_19, bytes.fromhex("00000100")) == []
     machine.feed(MIBLE_CHAR_19, bytes.fromhex("0000000c0200"))
+    assert machine.feed(MIBLE_CHAR_19, bytes.fromhex("00000100")) == []
     material = derive_login_material(token, machine.client_random, device_random)
     machine.feed(MIBLE_CHAR_19, b"\x01\x00" + material.expected_device_proof[:18])
     proof_ack = machine.feed(
@@ -90,6 +95,7 @@ def _complete_login(machine: MiBLEStateMachine, token: bytes) -> None:
     ]
     client_proof = machine.feed(MIBLE_CHAR_19, bytes.fromhex("00000101"))
     assert b"".join(write.data[2:] for write in client_proof) == material.client_proof
+    assert machine.feed(MIBLE_CHAR_19, bytes.fromhex("00000100")) == []
     machine.feed(MIBLE_CHAR_10, bytes.fromhex("21000000"))
 
 
@@ -192,6 +198,27 @@ class _SilentClient:
         pass
 
 
+class _WriteWithoutResponseCharacteristic:
+    properties = ["notify", "write-without-response"]
+
+
+class _WriteWithoutResponseServices:
+    def get_characteristic(self, _uuid: str) -> _WriteWithoutResponseCharacteristic:
+        return _WriteWithoutResponseCharacteristic()
+
+
+class _WriteModeClient(_SilentClient):
+    services = _WriteWithoutResponseServices()
+
+    def __init__(self) -> None:
+        self.responses: list[bool] = []
+
+    async def write_gatt_char(
+        self, uuid: str, data: bytes, *, response: bool
+    ) -> None:
+        self.responses.append(response)
+
+
 def test_protocol_stage_timeout() -> None:
     async def run() -> None:
         machine = MiBLEStateMachine()
@@ -202,6 +229,22 @@ def test_protocol_stage_timeout() -> None:
                 machine.start_activation(),
                 stage_timeout=0.001,
             )
+
+    asyncio.run(run())
+
+
+def test_transport_honors_write_without_response_property() -> None:
+    async def run() -> None:
+        machine = MiBLEStateMachine()
+        client = _WriteModeClient()
+        with pytest.raises(MiBLETimeoutError):
+            await run_state_machine(
+                client,
+                machine,
+                machine.start_activation(),
+                stage_timeout=0.001,
+            )
+        assert client.responses == [False]
 
     asyncio.run(run())
 

@@ -19,6 +19,11 @@ Both MiBLE characteristics must notify. Protocol transfer fragments start with
 `fragment_number, 0x00`; the reference implementation carries at most 18 data
 bytes in each fragment.
 
+On the physically tested PID `0x2542`, both characteristics advertise
+`write-without-response` (not `write`). The transport therefore selects the
+write mode from each discovered characteristic instead of forcing ATT write
+requests. This matters on strict Bleak backends such as Windows WinRT.
+
 ## Registration state machine
 
 The integration enables notifications before sending anything and bounds each
@@ -34,7 +39,10 @@ wait. The wire sequence is:
    `000000030400` to `0x0019`.
 5. On `00000101`, the host sends the 64-byte X/Y part of its uncompressed
    P-256 public key in four fragments. The private key is ephemeral.
-6. The device returns its own X/Y coordinates in four fragments. The host
+6. PID `0x2542` firmware `2.0.1_0021` sends an additional `00000100` ACK after
+   the fourth host-key fragment. The handler accepts this status only while
+   waiting for the device key. The device then returns its own X/Y coordinates
+   in four fragments. The host
    prepends SEC1 byte `04`, validates the point and performs P-256 ECDH.
 7. RFC 5869 HKDF-SHA256 expands the 32-byte ECDH secret to 64 bytes with no
    explicit salt and info `mible-setup-info`:
@@ -62,7 +70,8 @@ The fresh DID has the exact 20-byte shape used by the working reference:
 1. Host creates 16 random bytes, writes `24000000` to `0x0010`, then
    `0000000b0100` to `0x0019`.
 2. On `00000101`, host sends `0100 || host_random`.
-3. Device sends `0000000d0100`; host acknowledges with `00000101`.
+3. Confirmed t8 firmware may first send transfer ACK `00000100`. Device then
+   sends `0000000d0100`; host acknowledges with `00000101`.
 4. Device sends `0100 || device_random`.
 5. HKDF-SHA256 expands the 12-byte token to 64 bytes using salt
    `host_random || device_random` and info `mible-login-info`.
@@ -74,6 +83,10 @@ The fresh DID has the exact 20-byte shape used by the working reference:
 8. Host acknowledges and writes `0000000a0200`, then sends its proof in two
    fragments when requested.
 9. `21000000` on `0x0010` is success and `23000000` is failure.
+
+The state machine accepts the t8's extra `00000100` transfer acknowledgements
+only in login phases immediately following host writes; it does not treat
+arbitrary unexpected packets as harmless.
 
 ## MiBeacon v4/v5 authenticated decryption
 
@@ -111,18 +124,30 @@ relying on a name alone.
 
 ## Clock and unit
 
-The time value is five bytes: little-endian unsigned Unix epoch followed by a
-signed whole-hour UTC offset. The clock expects the real UTC epoch. For zones
-with a 30- or 45-minute component, working clients add the sub-hour remainder
-to the epoch and store the truncated whole-hour portion in the final byte.
-The integration computes the current offset from Home Assistant's configured
-IANA timezone at write time, so DST is represented by the offset in force at
-that moment. There is no timezone rule database in the clock; resync after a
-DST transition is therefore necessary.
+The common writable prefix is five bytes: little-endian unsigned Unix epoch
+followed by a one-byte UTC offset. The offset encoding differs by revision:
 
-The unit characteristic reads/writes one byte: `00` Celsius, `01` Fahrenheit.
-The direct measurement notification is exactly three bytes: signed
-little-endian temperature in hundredths of a degree Celsius, then integer RH.
+- original PID `0x045B` clients use a signed whole-hour value; for zones with a
+  30- or 45-minute component they fold the remainder into the epoch;
+- the physically tested PID `0x2542` uses signed 15-minute units. A Warsaw
+  summer offset of UTC+2 is therefore `08`, and Nepal UTC+5:45 is `23`.
+
+Firmware `2.0.1_0021` on PID `0x2542` returned seven bytes from the time
+characteristic: the five-byte prefix plus two zero bytes. Writes remain the
+five-byte prefix; verification accepts and ignores the observed trailing
+revision fields. The integration computes the current offset from Home
+Assistant's configured IANA timezone at write time. There is no timezone rule
+database in the clock, so resync after a DST transition is necessary.
+
+The unit characteristic is one byte. Physical PID `0x2542` returned `00` for
+Celsius and uses `01` for Fahrenheit. Original PID `0x045B` references use
+`FF` for Celsius and `01` for Fahrenheit, so writes are product-aware and reads
+accept both Celsius encodings.
+
+The native measurement prefix is signed little-endian temperature in
+hundredths of a degree Celsius followed by integer RH. Original devices send
+exactly three bytes. Physical PID `0x2542` sent five bytes; its final uint16 was
+battery voltage in millivolts (`5b0b34f40a` = 29.07 °C, 52%, 2804 mV).
 
 ## Sources and validation status
 
@@ -133,7 +158,13 @@ little-endian temperature in hundredths of a degree Celsius, then integer RH.
 - Independent embedded cross-check: [ESPHome Xiaomi BLE parser](https://github.com/esphome/esphome/tree/dev/esphome/components/xiaomi_ble).
 - Clock/unit byte format: [LYWSD02 clock sync reference](https://gist.github.com/luiseduardobrito/d6733a884b0e44996d1c8bec52242ace).
 
-Crypto, parser and state-transition vectors are automated. The Python state
-machine has not yet been exercised against the owner's physical clock; real
-hardware must confirm notification timing, which revisions gate time/unit
-writes behind login, and whether any revision uses a different DID preamble.
+Crypto, parser and state-transition vectors are automated. Windows/WinRT tests
+on the owner's PID `0x2542` have confirmed local name `LYWSD02MMC`, firmware
+`2.0.1_0021`, hardware `F4_M1`, manufacturer `miaomiaoce.com`, the full GATT
+fingerprint, fresh activation, reactivation with DID reassembly, immediate
+post-activation login, login over a later fresh connection, authenticated
+MiBeacon temperature/humidity frames, five-byte live data, time synchronization
+with seven-byte readback, the `8 × 15 min` Warsaw summer offset, Celsius
+write/readback and prompt disconnects. A real passive battery object was not
+observed during the bounded capture window; its parser remains covered by
+authenticated test vectors and will update the entity when broadcast.

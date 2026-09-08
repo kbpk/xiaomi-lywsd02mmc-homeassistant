@@ -88,6 +88,15 @@ async def run(args: argparse.Namespace) -> None:
                         )
                         temperature = raw_temperature / 100
                         print(f"temperature={temperature:.2f} °C humidity={value[2]} %")
+                    elif len(value) == 5:
+                        raw_temperature = int.from_bytes(
+                            value[:2], "little", signed=True
+                        )
+                        voltage_mv = int.from_bytes(value[3:5], "little")
+                        print(
+                            f"temperature={raw_temperature / 100:.2f} °C "
+                            f"humidity={value[2]} % battery={voltage_mv} mV"
+                        )
                     else:
                         print(f"environment notification: {value.hex(' ')}")
                     received.set()

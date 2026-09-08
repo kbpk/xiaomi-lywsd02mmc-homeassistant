@@ -59,9 +59,29 @@ class TracedClient:
         self._client = client
         self._trace = trace
 
+    @property
+    def services(self):
+        """Expose the GATT database for revision-aware write-mode selection."""
+
+        return self._client.services
+
     async def start_notify(self, characteristic: Any, callback: Any) -> None:
         self._trace.write("subscribe", uuid=str(characteristic))
-        await self._client.start_notify(characteristic, callback)
+
+        def traced_callback(sender: Any, data: bytearray) -> None:
+            value = bytes(data)
+            safe_status = value.hex() if len(value) <= 6 else None
+            self._trace.write(
+                "notify",
+                uuid=getattr(sender, "uuid", str(sender)),
+                length=len(value),
+                header=value[:2].hex(),
+                status=safe_status,
+                content="status" if safe_status is not None else "redacted",
+            )
+            callback(sender, data)
+
+        await self._client.start_notify(characteristic, traced_callback)
 
     async def stop_notify(self, characteristic: Any) -> None:
         self._trace.write("unsubscribe", uuid=str(characteristic))

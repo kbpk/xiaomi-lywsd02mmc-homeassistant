@@ -135,6 +135,20 @@ class LYWSD02MMCConnectionManager:
         self.lock = asyncio.Lock()
         self._disconnected_event: asyncio.Event | None = None
 
+    @property
+    def _product(self):
+        """Return revision behavior when the MiBeacon PID is known."""
+
+        return PRODUCTS.get(self.product_id) if self.product_id is not None else None
+
+    def _time_payload(self, now: datetime) -> bytes:
+        step = self._product.time_offset_step_minutes if self._product else 60
+        return build_time_payload(now, offset_step_minutes=step)
+
+    def _unit_payload(self, unit: str) -> bytes:
+        celsius_value = self._product.celsius_value if self._product else 0x00
+        return unit_to_payload(unit, celsius_value=celsius_value)
+
     async def _connect(self) -> BleakClient:
         ble_device = bluetooth.async_ble_device_from_address(
             self.hass, self.address, connectable=True
@@ -208,7 +222,7 @@ class LYWSD02MMCConnectionManager:
                     _LOGGER.debug("Could not read display unit", exc_info=True)
             if auto_sync and metadata.supports_time:
                 await client.write_gatt_char(
-                    TIME_CHAR_UUID, build_time_payload(now), response=True
+                    TIME_CHAR_UUID, self._time_payload(now), response=True
                 )
             return credentials, metadata, display_unit
 
@@ -236,7 +250,7 @@ class LYWSD02MMCConnectionManager:
     async def async_sync_clock(self, now: datetime) -> bytes:
         """Authenticate, write current time, and verify by reading when possible."""
 
-        payload = build_time_payload(now)
+        payload = self._time_payload(now)
 
         async def operation(client: BleakClient) -> bytes:
             if not _has_characteristic(client, TIME_CHAR_UUID):
@@ -254,7 +268,7 @@ class LYWSD02MMCConnectionManager:
     async def async_set_unit(self, unit: str) -> str:
         """Authenticate, set display unit and verify it by readback."""
 
-        payload = unit_to_payload(unit)
+        payload = self._unit_payload(unit)
 
         async def operation(client: BleakClient) -> str:
             if not _has_characteristic(client, UNIT_CHAR_UUID):

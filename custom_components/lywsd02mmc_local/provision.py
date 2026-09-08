@@ -109,6 +109,23 @@ def _fragments(data: bytes, size: int = 18) -> list[ProtocolWrite]:
     ]
 
 
+def _write_with_response(client: Any, characteristic: str) -> bool:
+    """Choose the write mode advertised by the concrete GATT database."""
+
+    services = getattr(client, "services", None)
+    if services is None:
+        return True
+    gatt_characteristic = services.get_characteristic(characteristic)
+    if gatt_characteristic is None:
+        return True
+    properties = set(gatt_characteristic.properties)
+    if "write" in properties:
+        return True
+    if "write-without-response" in properties:
+        return False
+    return True
+
+
 def generate_device_id() -> bytes:
     """Generate the 20-byte DID shape used by Xiaomi's working setup flow."""
 
@@ -295,6 +312,14 @@ class MiBLEStateMachine:
         ):
             return [_w19("00000101")]
 
+        # PID 0x2542 firmware 2.0.1_0021 acknowledges the final host public-key
+        # fragment before it starts sending its own key. The browser reference
+        # has no action for this status while state == 2.
+        if self.phase is Phase.WAIT_DEVICE_PUBLIC_KEY and value == bytes.fromhex(
+            "00000100"
+        ):
+            return []
+
         if self.phase is Phase.WAIT_DEVICE_PUBLIC_KEY and len(value) >= 3:
             index = value[0]
             if value[1] != 0 or index not in (1, 2, 3, 4):
@@ -333,6 +358,19 @@ class MiBLEStateMachine:
         if self.phase is Phase.WAIT_DID_ACK and value == bytes.fromhex("00000100"):
             self.phase = Phase.WAIT_ACTIVATION_RESULT
             return [_w10("13000000")]
+
+        # The t8 transport emits an explicit transfer ACK before several login
+        # responses. The ATC browser flow ignores these frames. Limit that
+        # behavior to phases in which a host transfer has just completed.
+        if value == bytes.fromhex("00000100") and self.phase in (
+            Phase.LOGIN_WAIT_RANDOM_ACCEPTED,
+            Phase.LOGIN_WAIT_DEVICE_RANDOM,
+            Phase.LOGIN_WAIT_DEVICE_PROOF_REQUEST,
+            Phase.LOGIN_WAIT_DEVICE_PROOF,
+            Phase.LOGIN_WAIT_CLIENT_PROOF_REQUEST,
+            Phase.LOGIN_WAIT_RESULT,
+        ):
+            return []
 
         if self.phase is Phase.LOGIN_WAIT_READY and value == bytes.fromhex("00000101"):
             self.phase = Phase.LOGIN_WAIT_RANDOM_ACCEPTED
@@ -441,7 +479,9 @@ async def run_state_machine(
             started.append(uuid)
         for write in initial_writes:
             await client.write_gatt_char(
-                write.characteristic, write.data, response=True
+                write.characteristic,
+                write.data,
+                response=_write_with_response(client, write.characteristic),
             )
         while not machine.complete:
             try:
@@ -460,7 +500,9 @@ async def run_state_machine(
             characteristic, value = item
             for write in machine.feed(characteristic, value):
                 await client.write_gatt_char(
-                    write.characteristic, write.data, response=True
+                    write.characteristic,
+                    write.data,
+                    response=_write_with_response(client, write.characteristic),
                 )
     finally:
         for uuid in reversed(started):

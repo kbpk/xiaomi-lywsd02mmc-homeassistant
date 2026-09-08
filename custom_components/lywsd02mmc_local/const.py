@@ -47,12 +47,18 @@ class ProductInfo:
     model: str
     revision: str
     clock: bool
+    time_offset_step_minutes: int = 60
+    celsius_value: int = 0x00
 
 
 PRODUCTS: dict[int, ProductInfo] = {
-    0x045B: ProductInfo("LYWSD02", "t1", True),
+    0x045B: ProductInfo("LYWSD02", "t1", True, celsius_value=0xFF),
     0x16E4: ProductInfo("LYWSD02MMC", "o2", True),
-    0x2542: ProductInfo("LYWSD02MMC", "t8", True),
+    # Confirmed on miaomiaoce.sensor_ht.t8 firmware 2.0.1_0021: byte 4 of
+    # EBE0CCB7 is a signed count of 15-minute UTC-offset units.
+    0x2542: ProductInfo(
+        "LYWSD02MMC", "t8", True, time_offset_step_minutes=15
+    ),
 }
 
 SUPPORTED_LOCAL_NAME_PREFIXES = ("LYWSD02", "LYWSD02MMC")

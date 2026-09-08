@@ -94,6 +94,31 @@ uv run --no-project --with-requirements "$repo\requirements-lab.txt" `
 The credential file is private and ignored by Git. Windows files inherit the
 directory ACL instead of the Unix `0600` mode.
 
+After activation, authenticate passive broadcasts against those credentials:
+
+```powershell
+uv run --no-project --with-requirements "$repo\requirements-lab.txt" `
+  "$repo\tools\lywsd02mmc_adv.py" `
+  --credentials "$repo\private\lywsd02mmc-secrets.json" `
+  --output "$repo\captures\lywsd02mmc-adv.jsonl" --duration 60
+```
+
+The tool prints only decoded sensor values and protocol metadata. It never
+prints the bindkey or token; the raw frames in its ignored trace remain
+encrypted.
+
+To verify a fresh post-activation login and exercise clock/unit controls:
+
+```powershell
+uv run --no-project --with-requirements "$repo\requirements-lab.txt" `
+  "$repo\tools\lywsd02mmc_control.py" `
+  --credentials "$repo\private\lywsd02mmc-secrets.json" `
+  --sync-clock --set-unit celsius
+```
+
+The helper disconnects when the operation completes. It prints no credential
+material and writes only high-level results to its ignored trace.
+
 ## First local activation
 
 1. Insert good CR2032 batteries and place the clock close to an HA Bluetooth
@@ -181,12 +206,16 @@ malformed/disconnect/timeout paths, real sanitized encrypted advertisements for
 `0x16E4` and `0x2542`, synthetic authenticated multi-object/PID/counter cases,
 clock offsets/DST, unit values and the zero-requirement integration contract.
 
-The protocol is implemented from working references, but this initial version
-still needs real-device validation on the owner's exact LYWSD02MMC: timing of
-the full activation exchange, PID/local-name reported during factory state,
-whether time/unit writes require a fresh login, and capability behavior on each
-firmware revision. DEBUG instrumentation exists specifically to capture those
-differences without leaking credentials.
+Windows/WinRT probing has now confirmed the owner's PID `0x2542` t8 device:
+local name `LYWSD02MMC`, firmware `2.0.1_0021`, hardware `F4_M1`, the complete
+GATT fingerprint, Celsius value `00`, seven-byte time readback, and its
+five-byte live-data payload (temperature, humidity and battery millivolts).
+Fresh activation, bound-device reactivation/DID handling, immediate and later
+fresh-connection login, authenticated encrypted advertisements, clock sync with
+Warsaw UTC+2 (`8 × 15 min`) and Celsius write/readback have all completed on
+that device. A passive battery object did not appear in the bounded capture;
+the authenticated parser path is covered by tests and updates the entity when
+the device broadcasts one.
 
 ## License
 
