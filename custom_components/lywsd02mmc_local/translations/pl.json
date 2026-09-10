@@ -24,7 +24,7 @@
       "activation_failed": {"description": "Aktywacja nie została zapisana. Umieść zegar w zasięgu i zatwierdź, aby spróbować ponownie.", "title": "Lokalna aktywacja nie powiodła się"},
       "bluetooth_confirm": {"description": "Znaleziono {name}: {address}, sygnał {rssi} dBm, rozpoznano jako {product}.", "title": "Potwierdź LYWSD02MMC"},
       "manual_bindkey": {"data": {"bindkey": "Bindkey (32 znaki hex)", "token": "Token Mi (opcjonalny, 24 znaki hex)"}, "description": "Token jest potrzebny tylko wtedy, gdy firmware wymaga logowania MiBLE do zapisu zegara lub jednostki.", "title": "Istniejące dane lokalne"},
-      "method": {"data": {"auto_sync_clock": "Zsynchronizuj zegar po aktywacji", "method": "Metoda poświadczeń"}, "description": "Zgłoszony stan aktywacji: {state}", "title": "Konfiguracja lokalna"},
+      "method": {"data": {"auto_sync_clock": "Automatycznie synchronizuj zegar", "method": "Metoda poświadczeń"}, "description": "Zgłoszony stan aktywacji: {state}", "title": "Konfiguracja lokalna"},
       "reactivate_warning": {"description": "Zegar zgłasza, że jest już aktywowany. Kontynuacja zastąpi dane Xiaomi i może zerwać istniejące powiązanie Mi Home. Nowe klucze będą zapisane wyłącznie we wpisie Home Assistanta.", "title": "Zastąpić istniejące powiązanie?"},
       "user": {"data": {"address": "Zegar"}, "title": "Wybierz zegar z rodziny LYWSD02"}
     }
@@ -32,8 +32,9 @@
   "entity": {
     "button": {"synchronize_clock": {"name": "Synchronizuj zegar"}},
     "select": {"display_unit": {"name": "Jednostka temperatury wyświetlacza", "state": {"celsius": "Celsjusz", "fahrenheit": "Fahrenheit"}}},
-    "sensor": {"battery": {"name": "Bateria"}, "humidity": {"name": "Wilgotność"}, "signal_strength": {"name": "Siła sygnału"}, "temperature": {"name": "Temperatura"}}
+    "sensor": {"battery": {"name": "Bateria"}, "battery_voltage": {"name": "Napięcie baterii"}, "humidity": {"name": "Wilgotność"}, "signal_strength": {"name": "Siła sygnału"}, "temperature": {"name": "Temperatura"}}
   },
+  "options": {"step": {"init": {"data": {"auto_sync_clock": "Synchronizuj po uruchomieniu Home Assistanta i zmianie przesunięcia strefy"}, "description": "Używa jednego krótkiego połączenia Bluetooth po uruchomieniu oraz po zmianie DST/offsetu UTC. Nie wykonuje okresowego odpytywania BLE.", "title": "Automatyczna synchronizacja zegara"}}},
   "selector": {
     "credential_method": {
       "options": {

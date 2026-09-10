@@ -139,7 +139,10 @@ characteristic: the five-byte prefix plus two zero bytes. Writes remain the
 five-byte prefix; verification accepts and ignores the observed trailing
 revision fields. The integration computes the current offset from Home
 Assistant's configured IANA timezone at write time. There is no timezone rule
-database in the clock, so resync after a DST transition is necessary.
+database in the clock. The integration therefore calculates the next IANA
+timezone offset transition, schedules one short-lived connection just after
+that transition, and schedules the following one. It also synchronizes once at
+Home Assistant startup when the option is enabled; it does not poll over BLE.
 
 The unit characteristic is one byte. Physical PID `0x2542` returned `00` for
 Celsius and uses `01` for Fahrenheit. Original PID `0x045B` references use
@@ -166,7 +169,7 @@ on the owner's PID `0x2542` have confirmed local name `LYWSD02MMC`, firmware
 fingerprint, fresh activation, reactivation with DID reassembly, immediate
 post-activation login, login over a later fresh connection, authenticated
 MiBeacon temperature/humidity frames, five-byte live data, time synchronization
-with seven-byte readback, the `8 × 15 min` Warsaw summer offset, Celsius
+with seven-byte readback, the signed whole-hour Warsaw summer offset `02`, Celsius
 write/readback and prompt disconnects. A real passive battery object was not
 observed during the bounded capture window; its parser remains covered by
 authenticated test vectors and will update the entity when broadcast.

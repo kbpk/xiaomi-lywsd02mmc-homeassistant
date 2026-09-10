@@ -4,16 +4,20 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
 from typing import Any, override
-from zoneinfo import ZoneInfo
 
 import voluptuous as vol
 from bleak.exc import BleakError
 from homeassistant.components import bluetooth
 from homeassistant.components.bluetooth import BluetoothServiceInfoBleak
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlowWithReload,
+)
 from homeassistant.const import CONF_ADDRESS
+from homeassistant.core import callback
 from homeassistant.helpers.device_registry import format_mac
 from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig
 
@@ -81,10 +85,19 @@ class LYWSD02MMCLocalConfigFlow(ConfigFlow, domain=DOMAIN):
         self._product_id: int | None = None
         self._registered: bool | None = None
         self._auto_sync = True
-        self._activation_task: asyncio.Task[
-            tuple[DeviceCredentials, DeviceMetadata, str | None]
-        ] | None = None
+        self._activation_task: (
+            asyncio.Task[tuple[DeviceCredentials, DeviceMetadata, str | None]] | None
+        ) = None
         self._activation_error: str | None = None
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: ConfigEntry,
+    ) -> LYWSD02MMCOptionsFlow:
+        """Create the integration options flow."""
+
+        return LYWSD02MMCOptionsFlow()
 
     @override
     async def async_step_bluetooth(
@@ -115,9 +128,7 @@ class LYWSD02MMCLocalConfigFlow(ConfigFlow, domain=DOMAIN):
             return await self.async_step_method()
         self._set_confirm_only()
         product = (
-            PRODUCTS.get(self._product_id)
-            if self._product_id is not None
-            else None
+            PRODUCTS.get(self._product_id) if self._product_id is not None else None
         )
         return self.async_show_form(
             step_id="bluetooth_confirm",
@@ -361,10 +372,7 @@ class LYWSD02MMCLocalConfigFlow(ConfigFlow, domain=DOMAIN):
     async def _async_activate(
         self,
     ) -> tuple[DeviceCredentials, DeviceMetadata, str | None]:
-        timezone = ZoneInfo(self.hass.config.time_zone)
-        return await self._manager().async_activate(
-            auto_sync=self._auto_sync, now=datetime.now(timezone)
-        )
+        return await self._manager().async_activate()
 
     def _create_entry(
         self,
@@ -415,3 +423,25 @@ class LYWSD02MMCLocalConfigFlow(ConfigFlow, domain=DOMAIN):
         if isinstance(err, BleakError):
             return "cannot_connect"
         return "unknown"
+
+
+class LYWSD02MMCOptionsFlow(OptionsFlowWithReload):
+    """Configure automatic clock synchronization."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Manage integration options."""
+
+        if user_input is not None:
+            return self.async_create_entry(data=user_input)
+        current = self.config_entry.options.get(
+            CONF_AUTO_SYNC,
+            self.config_entry.data.get(CONF_AUTO_SYNC, True),
+        )
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {vol.Required(CONF_AUTO_SYNC, default=current): bool}
+            ),
+        )

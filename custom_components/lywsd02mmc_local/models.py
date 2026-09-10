@@ -44,10 +44,24 @@ class SensorState:
     temperature: float | None = None
     humidity: float | None = None
     battery: int | None = None
+    battery_voltage: float | None = None
     rssi: int | None = None
     frame_counter: int | None = None
+    object_ids: tuple[int, ...] = field(default_factory=tuple)
     last_seen: datetime | None = None
+    last_native_update: datetime | None = None
     available: bool = False
+
+
+@dataclass(slots=True)
+class ConnectionState:
+    """Secret-free status of short-lived active GATT operations."""
+
+    last_operation: str | None = None
+    last_attempt: datetime | None = None
+    last_success: datetime | None = None
+    last_login: datetime | None = None
+    last_error: str | None = None
 
 
 @dataclass(slots=True)
@@ -57,6 +71,7 @@ class RuntimeData:
     coordinator: LYWSD02MMCCoordinator
     connection: LYWSD02MMCConnectionManager
     metadata: DeviceMetadata
+    clock_sync: Any | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
 

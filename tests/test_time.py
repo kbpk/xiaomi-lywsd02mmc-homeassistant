@@ -7,6 +7,8 @@ import pytest
 
 from custom_components.lywsd02mmc_local.time import (
     build_time_payload,
+    next_offset_transition,
+    parse_environment_notification,
     parse_temperature_humidity_notification,
     parse_time_payload,
     payload_to_unit,
@@ -78,9 +80,18 @@ def test_direct_notification_and_units() -> None:
     # Captured from physical PID 0x2542, firmware 2.0.1_0021. The final
     # uint16 is battery voltage (2804 mV) and is intentionally not part of
     # the temperature/humidity return type.
-    assert parse_temperature_humidity_notification(
-        bytes.fromhex("5b0b34f40a")
-    ) == (29.07, 52)
+    assert parse_temperature_humidity_notification(bytes.fromhex("5b0b34f40a")) == (
+        29.07,
+        52,
+    )
+    reading = parse_environment_notification(bytes.fromhex("5b0b34f40a"))
+    assert reading.temperature == 29.07
+    assert reading.humidity == 52
+    assert reading.battery_voltage == 2.804
+    legacy = parse_environment_notification(bytes.fromhex("c30a36"))
+    assert legacy.battery_voltage is None
+    with pytest.raises(ValueError, match="voltage"):
+        parse_environment_notification(bytes.fromhex("5b0b340000"))
     assert unit_to_payload("celsius") == b"\x00"
     assert unit_to_payload("celsius", celsius_value=0xFF) == b"\xff"
     assert unit_to_payload("fahrenheit") == b"\x01"
@@ -98,3 +109,21 @@ def test_clock_readback_validation() -> None:
         validate_time_readback(expected, bytes.fromhex("00f1536502"))
     with pytest.raises(ValueError, match="tolerance"):
         validate_time_readback(expected, bytes.fromhex("10f1536501"))
+
+
+def test_next_warsaw_dst_transitions() -> None:
+    warsaw = ZoneInfo("Europe/Warsaw")
+    spring = next_offset_transition(datetime(2026, 1, 1, tzinfo=UTC), warsaw)
+    assert spring == datetime(2026, 3, 29, 1, tzinfo=UTC)
+
+    autumn = next_offset_transition(datetime(2026, 3, 30, tzinfo=UTC), warsaw)
+    assert autumn == datetime(2026, 10, 25, 1, tzinfo=UTC)
+
+
+def test_timezone_without_transition() -> None:
+    assert (
+        next_offset_transition(
+            datetime(2026, 1, 1, tzinfo=UTC), timezone(timedelta(hours=5, minutes=30))
+        )
+        is None
+    )

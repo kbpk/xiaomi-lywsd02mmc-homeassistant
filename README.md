@@ -19,7 +19,8 @@ Known MiBeacon IDs are `0x045B` (original LYWSD02/t1), `0x16E4`
 revision). The integration creates one device with:
 
 - temperature (°C internally), humidity and battery sensors;
-- an optional disabled-by-default diagnostic RSSI sensor;
+- optional disabled-by-default diagnostic RSSI and, on confirmed t8 firmware,
+  battery-voltage sensors;
 - **Synchronize clock** when the time characteristic exists;
 - **Temperature display unit** when the unit characteristic exists.
 
@@ -126,8 +127,8 @@ material and writes only high-level results to its ignored trace.
    hold its only GATT connection.
 2. Select the discovered clock. The UI shows local name, address, RSSI and the
    recognized PID/revision when present.
-3. Choose **Activate locally / generate credentials**. Optionally leave the
-   initial clock synchronization enabled.
+3. Choose **Activate locally / generate credentials**. Optionally leave
+   automatic clock synchronization enabled.
 4. Home Assistant generates an ephemeral P-256 key and a new local Mi token and
    bindkey, provisions them over FE95, then performs mutual MiBLE login. Only a
    confirmed login creates the config entry. The private ECDH key is discarded.
@@ -153,6 +154,7 @@ that requires it.
   parsing and duplicate suppression.
 - `bluetooth.py`: current HA discovery/connection helpers and short-lived GATT.
 - `coordinator.py`: passive callback and HA learned/fallback availability.
+- `clock.py`: startup and exact DST/UTC-offset transition scheduling.
 - entity modules: deliberately thin wrappers around accumulated state.
 
 Secrets are stored in the config entry because passive decryption and later
@@ -164,12 +166,14 @@ for the complete byte-level flow.
 
 ## Clock behavior
 
-Clock writes use the Home Assistant configured timezone at the moment the button
-is pressed. Whole-hour offset is stored in the signed fifth byte; half/quarter
-hour remainder is folded into the epoch as required by known clients. The
-device stores only an offset, not future DST rules. Press **Synchronize clock**
-after a DST change or create a modest automation (for example twice yearly).
-The integration deliberately does not synchronize every few minutes.
+Clock writes use the Home Assistant configured timezone. Whole-hour offset is
+stored in the signed fifth byte; half/quarter-hour remainder is folded into the
+epoch as required by known clients. When automatic synchronization is enabled,
+the integration synchronizes once at Home Assistant startup and schedules the
+next exact timezone-offset transition. It then reschedules the following
+transition. This handles DST without periodic BLE polling or a persistent
+connection. The option is available from the integration's **Configure** menu;
+the manual **Synchronize clock** button remains available.
 
 ## Troubleshooting and debug logging
 
@@ -204,7 +208,12 @@ Tests cover independent fixed crypto vectors, P-256 ECDH, setup/login slicing,
 AES-CCM tag rejection, complete fresh and reactivation state traces, failure,
 malformed/disconnect/timeout paths, real sanitized encrypted advertisements for
 `0x16E4` and `0x2542`, synthetic authenticated multi-object/PID/counter cases,
-clock offsets/DST, unit values and the zero-requirement integration contract.
+clock offsets and exact DST-transition calculation, unit values, native battery
+voltage and the zero-requirement integration contract.
+
+All integration modules are also import-tested under WSL/Linux against Home
+Assistant Core `2026.9.1` on its required Python `3.14.2`, including the native
+Bluetooth, config-flow, options-flow, entity and diagnostics APIs.
 
 Windows/WinRT probing has now confirmed the owner's PID `0x2542` t8 device:
 local name `LYWSD02MMC`, firmware `2.0.1_0021`, hardware `F4_M1`, the complete
@@ -214,10 +223,10 @@ Fresh activation, bound-device reactivation/DID handling, immediate and later
 fresh-connection login, authenticated encrypted advertisements and Celsius
 write/readback have all completed on that device. Clock testing established
 that firmware `2.0.1_0021` interprets the timezone byte as signed whole hours;
-Warsaw UTC+2 is encoded as `02`. A passive battery object did not appear in the
-bounded capture;
-the authenticated parser path is covered by tests and updates the entity when
-the device broadcasts one.
+Warsaw UTC+2 is encoded as `02`. The t8 five-byte GATT payload supplies the
+disabled-by-default battery-voltage diagnostic sensor. A passive battery object
+did not appear in the bounded capture; the authenticated parser path is covered
+by tests and updates the percentage entity when the device broadcasts one.
 
 ## License
 

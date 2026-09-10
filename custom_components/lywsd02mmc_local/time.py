@@ -3,7 +3,17 @@
 from __future__ import annotations
 
 import struct
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import UTC, datetime, tzinfo
+
+
+@dataclass(frozen=True, slots=True)
+class EnvironmentReading:
+    """One native EBE0CCC1 temperature/humidity notification."""
+
+    temperature: float
+    humidity: int
+    battery_voltage: float | None = None
 
 
 def build_time_payload(now: datetime) -> bytes:
@@ -51,7 +61,48 @@ def validate_time_readback(
         raise ValueError("clock returned a time outside the verification tolerance")
 
 
-def parse_temperature_humidity_notification(payload: bytes) -> tuple[float, int]:
+def next_offset_transition(
+    now: datetime, timezone: tzinfo, *, horizon_days: int = 370
+) -> datetime | None:
+    """Return the next UTC instant when a timezone's UTC offset changes."""
+
+    if now.tzinfo is None or now.utcoffset() is None:
+        raise ValueError("time must be timezone-aware")
+    if horizon_days <= 0:
+        raise ValueError("transition horizon must be positive")
+
+    start = int(now.astimezone(UTC).timestamp())
+    current_offset = datetime.fromtimestamp(start, UTC).astimezone(timezone).utcoffset()
+    lower = start
+    limit = start + horizon_days * 24 * 60 * 60
+    step = 6 * 60 * 60
+    upper = min(lower + step, limit)
+
+    while upper <= limit:
+        candidate_offset = (
+            datetime.fromtimestamp(upper, UTC).astimezone(timezone).utcoffset()
+        )
+        if candidate_offset != current_offset:
+            while upper - lower > 1:
+                midpoint = (lower + upper) // 2
+                midpoint_offset = (
+                    datetime.fromtimestamp(midpoint, UTC)
+                    .astimezone(timezone)
+                    .utcoffset()
+                )
+                if midpoint_offset == current_offset:
+                    lower = midpoint
+                else:
+                    upper = midpoint
+            return datetime.fromtimestamp(upper, UTC)
+        if upper == limit:
+            break
+        lower = upper
+        upper = min(upper + step, limit)
+    return None
+
+
+def parse_environment_notification(payload: bytes) -> EnvironmentReading:
     """Decode a native EBE0CCC1 notification.
 
     Original devices send three bytes. Confirmed t8 firmware appends a
@@ -63,7 +114,20 @@ def parse_temperature_humidity_notification(payload: bytes) -> tuple[float, int]
     temperature, humidity = struct.unpack("<hB", payload[:3])
     if not 0 <= humidity <= 100:
         raise ValueError("humidity is outside the valid range")
-    return temperature / 100, humidity
+    battery_voltage = None
+    if len(payload) == 5:
+        millivolts = int.from_bytes(payload[3:5], "little")
+        if not 1000 <= millivolts <= 5000:
+            raise ValueError("battery voltage is outside the valid range")
+        battery_voltage = millivolts / 1000
+    return EnvironmentReading(temperature / 100, humidity, battery_voltage)
+
+
+def parse_temperature_humidity_notification(payload: bytes) -> tuple[float, int]:
+    """Decode the common temperature/humidity prefix for compatibility."""
+
+    reading = parse_environment_notification(payload)
+    return reading.temperature, reading.humidity
 
 
 def unit_to_payload(unit: str, *, celsius_value: int = 0x00) -> bytes:

@@ -13,8 +13,7 @@ def test_manifest_has_no_requirements_and_native_bluetooth_dependency() -> None:
     assert manifest["requirements"] == []
     assert manifest["dependencies"] == ["bluetooth"]
     assert any(
-        matcher.get("service_data_uuid")
-        == "0000fe95-0000-1000-8000-00805f9b34fb"
+        matcher.get("service_data_uuid") == "0000fe95-0000-1000-8000-00805f9b34fb"
         for matcher in manifest["bluetooth"]
     )
 
@@ -29,6 +28,8 @@ def test_required_config_flow_paths_are_present() -> None:
         "async_step_activate",
         "async_step_manual_bindkey",
         "async_show_progress",
+        "async_get_options_flow",
+        "OptionsFlowWithReload",
     ):
         assert step in source
 
@@ -67,6 +68,26 @@ def test_setup_constructor_wiring() -> None:
         "entry",
         "address",
     ]
+
+
+def test_device_info_includes_firmware_and_hardware_versions() -> None:
+    source = (INTEGRATION / "entity.py").read_text()
+    assert "hw_version=metadata.hardware or metadata.revision" in source
+    assert "sw_version=metadata.firmware or metadata.software" in source
+
+
+def test_feature_complete_diagnostics_and_clock_scheduler_are_wired() -> None:
+    init_source = (INTEGRATION / "__init__.py").read_text()
+    clock_source = (INTEGRATION / "clock.py").read_text()
+    sensor_source = (INTEGRATION / "sensor.py").read_text()
+    diagnostics_source = (INTEGRATION / "diagnostics.py").read_text()
+    assert "AutomaticClockSynchronizer" in init_source
+    assert "async_track_point_in_utc_time" in clock_source
+    assert "EVENT_CORE_CONFIG_UPDATE" in clock_source
+    assert 'key="battery_voltage"' in sensor_source
+    assert "entity_registry_enabled_default=False" in sensor_source
+    assert '"active_gatt"' in diagnostics_source
+    assert '"automatic_clock_sync"' in diagnostics_source
 
 
 def test_passive_callback_explicitly_accepts_nonconnectable_sources() -> None:

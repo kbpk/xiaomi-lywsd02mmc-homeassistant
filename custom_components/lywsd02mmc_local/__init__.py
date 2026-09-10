@@ -10,16 +10,16 @@ if TYPE_CHECKING:
     from .models import LYWSD02MMCConfigEntry
 
 
-async def async_setup_entry(
-    hass: HomeAssistant, entry: LYWSD02MMCConfigEntry
-) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: LYWSD02MMCConfigEntry) -> bool:
     """Set up passive listening and active-operation helpers."""
 
     from homeassistant.components import bluetooth
     from homeassistant.const import CONF_ADDRESS, Platform
 
     from .bluetooth import LYWSD02MMCConnectionManager
+    from .clock import AutomaticClockSynchronizer
     from .const import (
+        CONF_AUTO_SYNC,
         CONF_BINDKEY,
         CONF_PRODUCT_ID,
         CONF_TOKEN,
@@ -53,7 +53,17 @@ async def async_setup_entry(
         bytes.fromhex(entry.data[CONF_BINDKEY]),
         entry.data.get("display_unit"),
     )
-    entry.runtime_data = RuntimeData(coordinator, connection, metadata)
+    clock_sync = AutomaticClockSynchronizer(
+        hass,
+        entry,
+        connection,
+        coordinator,
+        enabled=metadata.supports_time
+        and entry.options.get(CONF_AUTO_SYNC, entry.data.get(CONF_AUTO_SYNC, True)),
+    )
+    entry.runtime_data = RuntimeData(
+        coordinator, connection, metadata, clock_sync=clock_sync
+    )
     coordinator.async_start()
 
     # Process the most recent cached advertisement immediately after restart.
@@ -65,12 +75,11 @@ async def async_setup_entry(
     await hass.config_entries.async_forward_entry_setups(
         entry, [Platform.SENSOR, Platform.BUTTON, Platform.SELECT]
     )
+    clock_sync.async_start()
     return True
 
 
-async def async_unload_entry(
-    hass: HomeAssistant, entry: LYWSD02MMCConfigEntry
-) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: LYWSD02MMCConfigEntry) -> bool:
     """Unload all entities; callbacks are removed by config-entry unload hooks."""
 
     from homeassistant.const import Platform

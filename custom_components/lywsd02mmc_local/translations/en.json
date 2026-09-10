@@ -26,7 +26,7 @@
       "activation_failed": {"description": "Activation was not committed. Put the clock in connectable range and submit to try again.", "title": "Local activation failed"},
       "bluetooth_confirm": {"description": "Found {name} at {address}, signal {rssi} dBm, detected as {product}.", "title": "Confirm LYWSD02MMC"},
       "manual_bindkey": {"data": {"bindkey": "Bindkey (32 hex characters)", "token": "Mi token (optional, 24 hex characters)"}, "description": "The token is only needed when this firmware requires MiBLE login for clock or unit writes.", "title": "Existing local credentials"},
-      "method": {"data": {"auto_sync_clock": "Synchronize the clock after activation", "method": "Credential method"}, "description": "Reported activation state: {state}", "title": "Configure locally"},
+      "method": {"data": {"auto_sync_clock": "Automatically synchronize the clock", "method": "Credential method"}, "description": "Reported activation state: {state}", "title": "Configure locally"},
       "reactivate_warning": {"description": "This clock reports that it is already activated. Continuing replaces its Xiaomi credentials and can break an existing Mi Home binding. The new keys will exist only in this Home Assistant config entry.", "title": "Replace existing device binding?"},
       "user": {"data": {"address": "Clock"}, "title": "Select an LYWSD02 family clock"}
     }
@@ -34,8 +34,9 @@
   "entity": {
     "button": {"synchronize_clock": {"name": "Synchronize clock"}},
     "select": {"display_unit": {"name": "Temperature display unit", "state": {"celsius": "Celsius", "fahrenheit": "Fahrenheit"}}},
-    "sensor": {"battery": {"name": "Battery"}, "humidity": {"name": "Humidity"}, "signal_strength": {"name": "Signal strength"}, "temperature": {"name": "Temperature"}}
+    "sensor": {"battery": {"name": "Battery"}, "battery_voltage": {"name": "Battery voltage"}, "humidity": {"name": "Humidity"}, "signal_strength": {"name": "Signal strength"}, "temperature": {"name": "Temperature"}}
   },
+  "options": {"step": {"init": {"data": {"auto_sync_clock": "Synchronize at Home Assistant startup and timezone offset changes"}, "description": "Uses one short-lived Bluetooth connection at startup and after DST/UTC-offset changes. No periodic BLE polling is performed.", "title": "Automatic clock synchronization"}}},
   "selector": {
     "credential_method": {
       "options": {

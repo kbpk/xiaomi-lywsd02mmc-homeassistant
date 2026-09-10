@@ -41,7 +41,7 @@
       },
       "method": {
         "data": {
-          "auto_sync_clock": "Synchronize the clock after activation",
+          "auto_sync_clock": "Automatically synchronize the clock",
           "method": "Credential method"
         },
         "description": "Reported activation state: {state}",
@@ -76,9 +76,21 @@
     },
     "sensor": {
       "battery": {"name": "Battery"},
+      "battery_voltage": {"name": "Battery voltage"},
       "humidity": {"name": "Humidity"},
       "signal_strength": {"name": "Signal strength"},
       "temperature": {"name": "Temperature"}
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "auto_sync_clock": "Synchronize at Home Assistant startup and timezone offset changes"
+        },
+        "description": "Uses one short-lived Bluetooth connection at startup and after DST/UTC-offset changes. No periodic BLE polling is performed.",
+        "title": "Automatic clock synchronization"
+      }
     }
   },
   "selector": {

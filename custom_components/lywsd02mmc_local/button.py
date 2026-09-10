@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import override
-from zoneinfo import ZoneInfo
 
 from homeassistant.components.button import ButtonEntity
 from homeassistant.core import HomeAssistant
@@ -39,8 +37,8 @@ class LYWSD02MMCSyncClockButton(LYWSD02MMCEntity, ButtonEntity):
     @override
     async def async_press(self) -> None:
         try:
-            timezone = ZoneInfo(self.runtime.connection.hass.config.time_zone)
-            await self.runtime.connection.async_sync_clock(datetime.now(timezone))
+            assert self.runtime.clock_sync is not None
+            await self.runtime.clock_sync.async_synchronize(reason="manual")
         except Exception as err:
             raise HomeAssistantError(
                 translation_domain="lywsd02mmc_local",
