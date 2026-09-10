@@ -12,6 +12,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
+from .battery import estimate_cr2032_percentage
 from .const import FALLBACK_AVAILABILITY_SECONDS, MIBEACON_SERVICE_UUID
 from .crypto import AuthenticationTagError
 from .mibeacon import (
@@ -106,6 +107,11 @@ class LYWSD02MMCCoordinator(DataUpdateCoordinator[SensorState]):
             battery=(
                 reading.battery if reading.battery is not None else self.data.battery
             ),
+            battery_estimated=(
+                False
+                if reading.battery is not None
+                else self.data.battery_estimated
+            ),
             rssi=service_info.rssi,
             frame_counter=reading.header.frame_counter,
             object_ids=reading.object_ids,
@@ -126,11 +132,20 @@ class LYWSD02MMCCoordinator(DataUpdateCoordinator[SensorState]):
     def async_set_native_environment(self, reading: EnvironmentReading) -> None:
         """Apply one short-lived native GATT reading as a fallback snapshot."""
 
+        battery = self.data.battery
+        battery_estimated = self.data.battery_estimated
+        if reading.battery_voltage is not None and (
+            battery is None or battery_estimated
+        ):
+            battery = estimate_cr2032_percentage(reading.battery_voltage)
+            battery_estimated = True
         self.async_set_updated_data(
             replace(
                 self.data,
                 temperature=reading.temperature,
                 humidity=reading.humidity,
+                battery=battery,
+                battery_estimated=battery_estimated,
                 battery_voltage=(
                     reading.battery_voltage
                     if reading.battery_voltage is not None

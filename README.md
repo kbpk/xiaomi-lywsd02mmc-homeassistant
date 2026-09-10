@@ -28,6 +28,10 @@ Normal measurements are passive encrypted MiBeacon advertisements. The
 integration does not poll or retain a GATT connection. It connects only for
 activation/login, time synchronization, unit changes or an explicit diagnostic
 read, serializes those operations per device, and disconnects in `finally`.
+On t8 firmware that omits battery percentage from advertisements, a confirmed
+native voltage snapshot supplies an explicitly marked estimate using the Xiaomi
+BLE CR2032 convention (`2.2 V = 0%`, `3.1 V = 100%`). A later authenticated
+MiBeacon percentage always replaces the estimate.
 
 ## Installation with HACS
 
@@ -209,7 +213,8 @@ AES-CCM tag rejection, complete fresh and reactivation state traces, failure,
 malformed/disconnect/timeout paths, real sanitized encrypted advertisements for
 `0x16E4` and `0x2542`, synthetic authenticated multi-object/PID/counter cases,
 clock offsets and exact DST-transition calculation, unit values, native battery
-voltage and the zero-requirement integration contract.
+voltage, bounded CR2032 percentage fallback and the zero-requirement integration
+contract.
 
 All integration modules are also import-tested under WSL/Linux against Home
 Assistant Core `2026.9.1` on its required Python `3.14.2`, including the native

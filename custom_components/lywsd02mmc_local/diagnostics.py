@@ -48,6 +48,7 @@ async def async_get_config_entry_diagnostics(
             "has_temperature": state.temperature is not None,
             "has_humidity": state.humidity is not None,
             "has_battery": state.battery is not None,
+            "battery_estimated": state.battery_estimated,
             "battery_voltage": state.battery_voltage,
             "rssi": state.rssi,
             "frame_counter": state.frame_counter,

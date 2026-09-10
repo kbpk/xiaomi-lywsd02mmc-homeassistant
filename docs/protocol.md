@@ -153,6 +153,11 @@ The native measurement prefix is signed little-endian temperature in
 hundredths of a degree Celsius followed by integer RH. Original devices send
 exactly three bytes. Physical PID `0x2542` sent five bytes; its final uint16 was
 battery voltage in millivolts (`5b0b34f40a` = 29.07 °C, 52%, 2804 mV).
+When this firmware has not broadcast an authenticated battery-percentage
+object, the integration estimates the CR2032 level using the same linear
+convention used by Xiaomi BLE parsers: 2.2 V is 0% and 3.1 V is 100%, clamped
+to that range. The sensor attribute identifies this as `voltage_estimate`;
+an actual MiBeacon percentage always takes precedence.
 
 ## Sources and validation status
 

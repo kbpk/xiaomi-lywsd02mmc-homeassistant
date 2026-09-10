@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import override
+from typing import Any, override
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -136,3 +136,19 @@ class LYWSD02MMCSensor(LYWSD02MMCEntity, SensorEntity):
     @override
     def native_value(self) -> float | int | None:
         return self.entity_description.value_fn(self.coordinator.data)
+
+    @property
+    @override
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        if (
+            self.entity_description.key != "battery"
+            or self.coordinator.data.battery is None
+        ):
+            return None
+        return {
+            "source": (
+                "voltage_estimate"
+                if self.coordinator.data.battery_estimated
+                else "mibeacon"
+            )
+        }

@@ -44,6 +44,7 @@ class SensorState:
     temperature: float | None = None
     humidity: float | None = None
     battery: int | None = None
+    battery_estimated: bool = False
     battery_voltage: float | None = None
     rssi: int | None = None
     frame_counter: int | None = None
